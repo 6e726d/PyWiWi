@@ -1,5 +1,4 @@
-# Python bindings for Windows Native Wifi Api
-#
+# PyWiWi - Windows Native Wifi Api Python library.
 # Copyright (C) 2013 - Andres Blanco
 #
 # This file is part of PyWiWi
@@ -17,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Author: Andres Blanco (6e726d) <6e726d@gmail.com>
+# Author: Andres Blanco (6e726d)     <6e726d@gmail.com>
 #
 
 from ctypes import *
