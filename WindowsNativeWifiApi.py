@@ -56,7 +56,7 @@ DOT11_BSS_TYPE_DICT = {1: "dot11_BSS_type_infrastructure",
 
 # The DOT11_MAC_ADDRESS types are used to define an IEEE media access control
 # (MAC) address.
-DOT11_MAC_ADDRESS = c_byte * 6
+DOT11_MAC_ADDRESS = c_ubyte * 6
 
 # The DOT11_BSS_TYPE enumerated type defines a basic service set (BSS) network
 # type.
@@ -126,7 +126,7 @@ class DOT11_SSID(Structure):
         } DOT11_SSID, *PDOT11_SSID;
     """
     _fields_ = [("SSIDLength", c_ulong),
-                ("SSID", c_byte * DOT11_SSID_MAX_LENGTH)]
+                ("SSID", c_char * DOT11_SSID_MAX_LENGTH)]
 
 
 class WLAN_RAW_DATA(Structure):
@@ -252,6 +252,20 @@ def WlanCloseHandle(hClientHandle):
     return result
 
 
+def WlanFreeMemory(pMemory):
+    """
+        The WlanFreeMemory function frees memory. Any memory returned from
+        Native Wifi functions must be freed.
+
+        VOID WINAPI WlanFreeMemory(
+            _In_  PVOID pMemory
+        );
+    """
+    func_ref = wlanapi.WlanFreeMemory
+    func_ref.argtypes = [c_void_p]
+    func_ref(pMemory)
+
+
 def WlanEnumInterfaces(hClientHandle):
     """
         The WlanEnumInterfaces function enumerates all of the wireless LAN
@@ -273,20 +287,6 @@ def WlanEnumInterfaces(hClientHandle):
     if result != ERROR_SUCCESS:
         raise Exception("WlanEnumInterfaces failed.")
     return wlan_ifaces
-
-
-def WlanFreeMemory(pMemory):
-    """
-        The WlanFreeMemory function frees memory. Any memory returned from
-        Native Wifi functions must be freed.
-
-        VOID WINAPI WlanFreeMemory(
-            _In_  PVOID pMemory
-        );
-    """
-    func_ref = wlanapi.WlanFreeMemory
-    func_ref.argtypes = [c_void_p]
-    func_ref(pMemory)
 
 
 def WlanScan(hClientHandle, pInterfaceGuid, ssid=""):
@@ -313,7 +313,8 @@ def WlanScan(hClientHandle, pInterfaceGuid, ssid=""):
         length = len(ssid)
         if length > DOT11_SSID_MAX_LENGTH:
             raise Exception("SSIDs have a maximum length of 32 characters.")
-        data = tuple(ord(char) for char in ssid)
+        # data = tuple(ord(char) for char in ssid)
+        data = ssid
         dot11_ssid = byref(DOT11_SSID(length, data))
     else:
         dot11_ssid = None
@@ -373,31 +374,3 @@ def WlanGetNetworkBssList(hClientHandle, pInterfaceGuid):
     if result != ERROR_SUCCESS:
         raise Exception("WlanGetNetworkBssList failed.")
     return wlan_bss_list
-
-
-if __name__ == "__main__":
-    import time
-    print "Windows Native Wifi Api Tests"
-    handle = WlanOpenHandle()
-    wlan_ifaces = WlanEnumInterfaces(handle)
-    data_type = wlan_ifaces.contents.InterfaceInfo._type_
-    num = wlan_ifaces.contents.NumberOfItems
-    from ctypes import addressof
-    ifaces_pointer = addressof(wlan_ifaces.contents.InterfaceInfo)
-    wlan_interface_info_list = (data_type * num).from_address(ifaces_pointer)
-
-    for wlan_interface_info in wlan_interface_info_list:
-        print "\nUsing %s" % wlan_interface_info.strInterfaceDescription
-        print " + Scanning and Sending Probe Requests for \"test\" ssid."
-        WlanScan(handle, wlan_interface_info.InterfaceGuid, "test")
-        print " + Getting available BSS list."
-        # Some devices require some time between the scan and the retrive of
-        # the BSS list information.
-        time.sleep(5)
-        iface_guid = wlan_interface_info.InterfaceGuid
-        bss_list = WlanGetNetworkBssList(handle, iface_guid)
-        print " + WLAN_BSS_LIST total size: %r" % bss_list.contents.TotalSize
-        print " + WLAN_BSS_LIST items: %r" % bss_list.contents.NumberOfItems
-
-    WlanFreeMemory(wlan_ifaces)
-    WlanCloseHandle(handle)

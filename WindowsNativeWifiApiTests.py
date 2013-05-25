@@ -41,7 +41,7 @@ class TestWindowsNativeWifiApi(unittest.TestCase):
         ifaces_pointer = addressof(wlan_ifaces.contents.InterfaceInfo)
         wlan_iface_info_list = (data_type * num).from_address(ifaces_pointer)
         msg = "We expect at least one wireless interface."
-        self.assertGreater(len(wlan_iface_info_list), 1, msg)
+        self.assertGreaterEqual(len(wlan_iface_info_list), 1, msg)
         WlanFreeMemory(wlan_ifaces)
         WlanCloseHandle(handle)
 
@@ -53,7 +53,7 @@ class TestWindowsNativeWifiApi(unittest.TestCase):
         ifaces_pointer = addressof(wlan_ifaces.contents.InterfaceInfo)
         wlan_iface_info_list = (data_type * num).from_address(ifaces_pointer)
         msg = "We expect at least one wireless interface."
-        self.assertGreater(len(wlan_iface_info_list), 1, msg)
+        self.assertGreaterEqual(len(wlan_iface_info_list), 1, msg)
         for wlan_iface_info in wlan_iface_info_list:
             WlanScan(handle, wlan_iface_info.InterfaceGuid, "test")
         WlanFreeMemory(wlan_ifaces)
@@ -67,7 +67,7 @@ class TestWindowsNativeWifiApi(unittest.TestCase):
         ifaces_pointer = addressof(wlan_ifaces.contents.InterfaceInfo)
         wlan_iface_info_list = (data_type * num).from_address(ifaces_pointer)
         msg = "We expect at least one wireless interface."
-        self.assertGreater(len(wlan_iface_info_list), 1, msg)
+        self.assertGreaterEqual(len(wlan_iface_info_list), 1, msg)
         for wlan_iface_info in wlan_iface_info_list:
             iface_guid = wlan_iface_info.InterfaceGuid
             bss_list = WlanGetNetworkBssList(handle, iface_guid)

@@ -19,15 +19,16 @@
 # Author: Andres Blanco (6e726d) <6e726d@gmail.com>
 #
 
-from ctypes import addressof
-
+from ctypes import *
+from comtypes import GUID
 from WindowsNativeWifiApi import *
 
 
 class WirelessInterface(object):
     def __init__(self, wlan_iface_info):
         self.description = wlan_iface_info.strInterfaceDescription
-        self.guid = wlan_iface_info.InterfaceGuid
+        self.guid = GUID(wlan_iface_info.InterfaceGuid)
+        self.guid_string = str(wlan_iface_info.InterfaceGuid)
         self.state = wlan_iface_info.isState
         self.state_string = WLAN_INTERFACE_STATE_DICT[self.state]
 
@@ -35,7 +36,76 @@ class WirelessInterface(object):
         result = ""
         result += "Description: %s\n" % self.description
         result += "GUID: %s\n" % self.guid
-        result += "State: %s\n" % self.state_string
+        result += "State: %s" % self.state_string
+        return result
+
+
+class InformationElement(object):
+    def __init__(self, element_id, length, body):
+        self.element_id = element_id
+        self.length = length
+        self.body = body
+
+    def __str__(self):
+        result = ""
+        result += "Element ID: %d\n" % self.element_id
+        result += "Length: %d\n" % self.length
+        result += "Body: %r" % self.body
+        return result
+
+
+class WirelessNetworkBss(object):
+    def __init__(self, bss_entry):
+        self.ssid = bss_entry.dot11Ssid.SSID[:DOT11_SSID_MAX_LENGTH]
+        self.link_quality = bss_entry.LinkQuality
+        self.bssid = ":".join(map(lambda x: "%02X" % x, bss_entry.dot11Bssid))
+        self.bss_type = DOT11_BSS_TYPE_DICT[bss_entry.dot11BssType]
+        self.phy_type = DOT11_PHY_TYPE_DICT[bss_entry.dot11BssPhyType]
+        self.rssi = bss_entry.Rssi
+        self.capabilities = bss_entry.CapabilityInformation
+        self.__process_information_elements(bss_entry)
+        self.__process_information_elements2()
+
+    def __process_information_elements(self, bss_entry):
+        self.raw_information_elements = ""
+        bss_entry_pointer = addressof(bss_entry)
+        ie_offset = bss_entry.IeOffset
+        data_type = (c_char * bss_entry.IeSize)
+        ie_buffer = data_type.from_address(bss_entry_pointer + ie_offset)
+        for byte in ie_buffer:
+            self.raw_information_elements += byte
+
+    def __process_information_elements2(self):
+        MINIMAL_IE_SIZE = 3
+        self.information_elements = []
+        aux = self.raw_information_elements
+        index = 0
+        while(index < len(aux) - MINIMAL_IE_SIZE):
+            eid = ord(aux[index])
+            index += 1
+            length = ord(aux[index])
+            index += 1
+            body = aux[index:index + length]
+            index += length
+            ie = InformationElement(eid, length, body)
+            self.information_elements.append(ie)
+
+    def __str__(self):
+        result = ""
+        result += "BSSID: %s\n" % self.bssid
+        result += "SSID: %s\n" % self.ssid
+        result += "Link Quality: %d%%\n" % self.link_quality
+        result += "BSS Type: %s\n" % self.bss_type
+        result += "PHY Type: %s\n" % self.phy_type
+        result += "Capabilities: %d\n" % self.capabilities
+        # result += "Raw Information Elements:\n"
+        # result += "%r" % self.raw_information_elements
+        result += "\nInformation Elements:\n"
+        for ie in self.information_elements:
+            lines = str(ie).split("\n")
+            for line in lines:
+                result += " + %s\n" % line
+            result += "\n"
         return result
 
 
@@ -64,11 +134,6 @@ def getWirelessNetworkBssList(wireless_interface):
        networks availables."""
     networks = []
     handle = WlanOpenHandle()
-    print "-" * 5
-    print wireless_interface
-    print wireless_interface.guid
-    print "-" * 5
-    return
     bss_list = WlanGetNetworkBssList(handle, wireless_interface.guid)
     # Handle the WLAN_BSS_LIST pointer to get a list of WLAN_BSS_ENTRY
     # structures.
@@ -77,12 +142,5 @@ def getWirelessNetworkBssList(wireless_interface):
     bsss_pointer = addressof(bss_list.contents.wlanBssEntries)
     bss_entries_list = (data_type * num).from_address(bsss_pointer)
     for bss_entry in bss_entries_list:
-        print bss_entry
-
-
-if __name__ == "__main__":
-    ifaces = getWirelessInterfaces()
-    for iface in ifaces:
-        print iface
-        guid = iface.guid
-        getWirelessNetworkBssList(iface)
+        networks.append(WirelessNetworkBss(bss_entry))
+    return networks
