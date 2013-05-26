@@ -76,6 +76,23 @@ class TestWindowsNativeWifiApi(unittest.TestCase):
         WlanFreeMemory(wlan_ifaces)
         WlanCloseHandle(handle)
 
+    def testWlanGetAvailableNetworkListSuccess(self):
+        handle = WlanOpenHandle()
+        wlan_ifaces = WlanEnumInterfaces(handle)
+        data_type = wlan_ifaces.contents.InterfaceInfo._type_
+        num = wlan_ifaces.contents.NumberOfItems
+        ifaces_pointer = addressof(wlan_ifaces.contents.InterfaceInfo)
+        wlan_iface_info_list = (data_type * num).from_address(ifaces_pointer)
+        msg = "We expect at least one wireless interface."
+        self.assertGreaterEqual(len(wlan_iface_info_list), 1, msg)
+        for wlan_iface_info in wlan_iface_info_list:
+            iface_guid = wlan_iface_info.InterfaceGuid
+            network_list = WlanGetAvailableNetworkList(handle, iface_guid)
+            msg = "We expect at least one network bss."
+            self.assertGreater(network_list.contents.NumberOfItems, 1, msg)
+        WlanFreeMemory(wlan_ifaces)
+        WlanCloseHandle(handle)
+
 
 if __name__ == "__main__":
     unittest.main()

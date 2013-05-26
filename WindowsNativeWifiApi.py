@@ -78,7 +78,47 @@ DOT11_PHY_TYPE_DICT = {0: "dot11_phy_type_unknown",
                        0x80000000: "dot11_phy_type_IHV_start",
                        0xffffffff: "dot11_phy_type_IHV_end"}
 
+# The DOT11_AUTH_ALGORITHM enumerated type defines a wireless LAN
+# authentication algorithm.
+DOT11_AUTH_ALGORITHM_TYPE = c_uint
+DOT11_AUTH_ALGORITHM_DICT = {1: "DOT11_AUTH_ALGO_80211_OPEN",
+                             2: "DOT11_AUTH_ALGO_80211_SHARED_KEY",
+                             3: "DOT11_AUTH_ALGO_WPA",
+                             4: "DOT11_AUTH_ALGO_WPA_PSK",
+                             5: "DOT11_AUTH_ALGO_WPA_NONE",
+                             6: "DOT11_AUTH_ALGO_RSNA",
+                             7: "DOT11_AUTH_ALGO_RSNA_PSK",
+                             0x80000000: "DOT11_AUTH_ALGO_IHV_START",
+                             0xffffffff: "DOT11_AUTH_ALGO_IHV_END"}
+
+# The DOT11_CIPHER_ALGORITHM enumerated type defines a cipher algorithm for
+# data encryption and decryption.
+DOT11_CIPHER_ALGORITHM_TYPE = c_uint
+DOT11_CIPHER_ALGORITHM_DICT = {0x00: "DOT11_CIPHER_ALGO_NONE",
+                               0x01: "DOT11_CIPHER_ALGO_WEP40",
+                               0x02: "DOT11_CIPHER_ALGO_TKIP",
+                               0x04: "DOT11_CIPHER_ALGO_CCMP",
+                               0x05: "DOT11_CIPHER_ALGO_WEP104",
+                               0x100: "DOT11_CIPHER_ALGO_WPA_USE_GROUP",
+                               0x100: "DOT11_CIPHER_ALGO_RSN_USE_GROUP",
+                               0x101: "DOT11_CIPHER_ALGO_WEP",
+                               0x80000000: "DOT11_CIPHER_ALGO_IHV_START",
+                               0xffffffff: "DOT11_CIPHER_ALGO_IHV_END"}
+
+WLAN_REASON_CODE = DWORD
+WLAN_SIGNAL_QUALITY = c_ulong
+
+WLAN_MAX_PHY_TYPE_NUMBER = 8
+
 DOT11_RATE_SET_MAX_LENGTH = 126
+
+# WLAN_AVAILABLE_NETWORK Flags
+WLAN_AVAILABLE_NETWORK_CONNECTED = 0x00000001
+WLAN_AVAILABLE_NETWORK_HAS_PROFILE = 0x00000002
+WLAN_AVAILABLE_NETWORK_CONSOLE_USER_PROFILE = 0x00000004
+
+WLAN_AVAILABLE_NETWORK_INCLUDE_ALL_ADHOC_PROFILES = 0x00000001
+WLAN_AVAILABLE_NETWORK_INCLUDE_ALL_MANUAL_HIDDEN_PROFILES = 0x00000002
 
 WLAN_AVAILABLE_NETWORK_INCLUDE_ALL_ADHOC_PROFILES = 0x00000001
 WLAN_AVAILABLE_NETWORK_INCLUDE_ALL_MANUAL_HIDDEN_PROFILES = 0x00000002
@@ -210,6 +250,62 @@ class WLAN_BSS_LIST(Structure):
     _fields_ = [("TotalSize", DWORD),
                 ("NumberOfItems", DWORD),
                 ("wlanBssEntries", WLAN_BSS_ENTRY * 1)]
+
+
+class WLAN_AVAILABLE_NETWORK(Structure):
+    """
+        The WLAN_AVAILABLE_NETWORK structure contains information about an
+        available wireless network.
+
+        typedef struct _WLAN_AVAILABLE_NETWORK {
+            WCHAR                  strProfileName[256];
+            DOT11_SSID             dot11Ssid;
+            DOT11_BSS_TYPE         dot11BssType;
+            ULONG                  uNumberOfBssids;
+            BOOL                   bNetworkConnectable;
+            WLAN_REASON_CODE       wlanNotConnectableReason;
+            ULONG                  uNumberOfPhyTypes;
+            DOT11_PHY_TYPE         dot11PhyTypes[WLAN_MAX_PHY_TYPE_NUMBER];
+            BOOL                   bMorePhyTypes;
+            WLAN_SIGNAL_QUALITY    wlanSignalQuality;
+            BOOL                   bSecurityEnabled;
+            DOT11_AUTH_ALGORITHM   dot11DefaultAuthAlgorithm;
+            DOT11_CIPHER_ALGORITHM dot11DefaultCipherAlgorithm;
+            DWORD                  dwFlags;
+            DWORD                  dwReserved;
+        } WLAN_AVAILABLE_NETWORK, *PWLAN_AVAILABLE_NETWORK;
+    """
+    _fields_ = [("ProfileName", c_wchar * 256),
+                ("dot11Ssid", DOT11_SSID),
+                ("dot11BssType", DOT11_BSS_TYPE),
+                ("NumberOfBssids", c_ulong),
+                ("NetworkConnectable", BOOL),
+                ("wlanNotConnectableReason", WLAN_REASON_CODE),
+                ("NumberOfPhyTypes", c_ulong),
+                ("dot11PhyTypes", DOT11_PHY_TYPE * WLAN_MAX_PHY_TYPE_NUMBER),
+                ("MorePhyTypes", BOOL),
+                ("wlanSignalQuality", WLAN_SIGNAL_QUALITY),
+                ("SecurityEnabled", BOOL),
+                ("dot11DefaultAuthAlgorithm", DOT11_AUTH_ALGORITHM_TYPE),
+                ("dot11DefaultCipherAlgorithm", DOT11_CIPHER_ALGORITHM_TYPE),
+                ("Flags", DWORD),
+                ("Reserved", DWORD)]
+
+
+class WLAN_AVAILABLE_NETWORK_LIST(Structure):
+    """
+        The WLAN_AVAILABLE_NETWORK_LIST structure contains an array of
+        information about available networks.
+
+        typedef struct _WLAN_AVAILABLE_NETWORK_LIST {
+            DWORD                  dwNumberOfItems;
+            DWORD                  dwIndex;
+            WLAN_AVAILABLE_NETWORK Network[1];
+        } WLAN_AVAILABLE_NETWORK_LIST, *PWLAN_AVAILABLE_NETWORK_LIST;
+    """
+    _fields_ = [("NumberOfItems", DWORD),
+                ("Index", DWORD),
+                ("Network", WLAN_AVAILABLE_NETWORK * 1)]
 
 
 def WlanOpenHandle():
@@ -374,3 +470,34 @@ def WlanGetNetworkBssList(hClientHandle, pInterfaceGuid):
     if result != ERROR_SUCCESS:
         raise Exception("WlanGetNetworkBssList failed.")
     return wlan_bss_list
+
+
+def WlanGetAvailableNetworkList(hClientHandle, pInterfaceGuid):
+    """
+        The WlanGetAvailableNetworkList function retrieves the list of
+        available networks on a wireless LAN interface.
+
+        DWORD WINAPI WlanGetAvailableNetworkList(
+            _In_        HANDLE hClientHandle,
+            _In_        const GUID *pInterfaceGuid,
+            _In_        DWORD dwFlags,
+            _Reserved_  PVOID pReserved,
+            _Out_       PWLAN_AVAILABLE_NETWORK_LIST *ppAvailableNetworkList
+        );
+    """
+    func_ref = wlanapi.WlanGetAvailableNetworkList
+    func_ref.argtypes = [HANDLE,
+                         POINTER(GUID),
+                         DWORD,
+                         c_void_p,
+                         POINTER(POINTER(WLAN_AVAILABLE_NETWORK_LIST))]
+    func_ref.restype = DWORD
+    wlan_available_network_list = pointer(WLAN_AVAILABLE_NETWORK_LIST())
+    result = func_ref(hClientHandle,
+                      byref(pInterfaceGuid),
+                      0,
+                      None,
+                      byref(wlan_available_network_list))
+    if result != ERROR_SUCCESS:
+        raise Exception("WlanGetNetworkBssList failed.")
+    return wlan_available_network_list
