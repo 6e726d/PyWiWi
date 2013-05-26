@@ -54,6 +54,40 @@ class InformationElement(object):
         return result
 
 
+class WirelessNetwork(object):
+    def __init__(self, wireless_network):
+        self.ssid = wireless_network.dot11Ssid.SSID[:DOT11_SSID_MAX_LENGTH]
+        self.profile_name = wireless_network.ProfileName
+        self.bss_type = DOT11_BSS_TYPE_DICT[wireless_network.dot11BssType]
+        self.number_of_bssids = wireless_network.NumberOfBssids
+        self.connectable = bool(wireless_network.NetworkConnectable)
+        self.number_of_phy_types = wireless_network.NumberOfPhyTypes
+        self.signal_quality = wireless_network.wlanSignalQuality
+        self.security_enabled = bool(wireless_network.SecurityEnabled)
+        auth = wireless_network.dot11DefaultAuthAlgorithm
+        self.auth = DOT11_AUTH_ALGORITHM_DICT[auth]
+        cipher = wireless_network.dot11DefaultCipherAlgorithm
+        self.cipher = DOT11_CIPHER_ALGORITHM_DICT[cipher]
+        self.flags = wireless_network.Flags
+
+    def __str__(self):
+        result = ""
+        if not self.profile_name:
+            self.profile_name = "<No Profile>"
+        result += "Profile Name: %s\n" % self.profile_name
+        result += "SSID: %s\n" % self.ssid
+        result += "BSS Type: %s\n" % self.bss_type
+        result += "Number of BSSIDs: %d\n" % self.number_of_bssids
+        result += "Connectable: %r\n" % self.connectable
+        result += "Number of PHY types: %d\n" % self.number_of_phy_types
+        result += "Signal Quality: %d%%\n" % self.signal_quality
+        result += "Security Enabled: %r\n" % self.security_enabled
+        result += "Authentication: %s\n" % self.auth
+        result += "Cipher: %s\n" % self.cipher
+        result += "Flags: %d\n" % self.flags
+        return result
+
+
 class WirelessNetworkBss(object):
     def __init__(self, bss_entry):
         self.ssid = bss_entry.dot11Ssid.SSID[:DOT11_SSID_MAX_LENGTH]
@@ -143,4 +177,21 @@ def getWirelessNetworkBssList(wireless_interface):
     bss_entries_list = (data_type * num).from_address(bsss_pointer)
     for bss_entry in bss_entries_list:
         networks.append(WirelessNetworkBss(bss_entry))
+    return networks
+
+
+def getWlanGetAvailableNetworkList(wireless_interface):
+    """Returns a list of WirelessNetwork objects based on the wireless
+       networks availables."""
+    networks = []
+    handle = WlanOpenHandle()
+    network_list = WlanGetAvailableNetworkList(handle, wireless_interface.guid)
+    # Handle the WLAN_AVAILABLE_NETWORK_LIST pointer to get a list of
+    # WLAN_AVAILABLE_NETWORK structures.
+    data_type = network_list.contents.Network._type_
+    num = network_list.contents.NumberOfItems
+    network_pointer = addressof(network_list.contents.Network)
+    networks_list = (data_type * num).from_address(network_pointer)
+    for network in networks_list:
+        networks.append(WirelessNetwork(network))
     return networks
