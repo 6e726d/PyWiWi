@@ -4,6 +4,7 @@ DONE
  + WlanEnumInterfaces
  + WlanFreeMemory
  + WlanGetNetworkBssList
+ + WlanGetAvailableNetworkList
 
 PENDING
  + WLAN_NOTIFICATION_CALLBACK
@@ -12,7 +13,6 @@ PENDING
  + WlanDeleteProfile
  + WlanDisconnect
  + WlanExtractPsdIEDataList
- + WlanGetAvailableNetworkList
  + WlanGetFilterList
  + WlanGetInterfaceCapability
  + WlanGetProfile
