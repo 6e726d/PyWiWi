@@ -177,10 +177,12 @@ def getWirelessNetworkBssList(wireless_interface):
     bss_entries_list = (data_type * num).from_address(bsss_pointer)
     for bss_entry in bss_entries_list:
         networks.append(WirelessNetworkBss(bss_entry))
+    WlanFreeMemory(bss_list)
+    WlanCloseHandle(handle)
     return networks
 
 
-def getWlanGetAvailableNetworkList(wireless_interface):
+def getWirelessAvailableNetworkList(wireless_interface):
     """Returns a list of WirelessNetwork objects based on the wireless
        networks availables."""
     networks = []
@@ -194,4 +196,11 @@ def getWlanGetAvailableNetworkList(wireless_interface):
     networks_list = (data_type * num).from_address(network_pointer)
     for network in networks_list:
         networks.append(WirelessNetwork(network))
+    WlanFreeMemory(networks_list)
+    WlanCloseHandle(handle)
     return networks
+
+
+def getWirelessProfiles(wireless_interface):
+    """"""
+    pass
