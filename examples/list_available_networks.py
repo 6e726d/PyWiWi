@@ -20,16 +20,16 @@
 #
 
 from WindowsWifi import getWirelessInterfaces
-from WindowsWifi import getWlanGetAvailableNetworkList
+from WindowsWifi import getWirelessAvailableNetworkList
 
 if __name__ == "__main__":
     ifaces = getWirelessInterfaces()
     for iface in ifaces:
         print iface
         guid = iface.guid
-        bsss = getWlanGetAvailableNetworkList(iface)
+        networks = getWirelessAvailableNetworkList(iface)
         print ""
-        for bss in bsss:
-            print bss
+        for network in networks:
+            print network
             print "-" * 20
         print ""
