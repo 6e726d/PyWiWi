@@ -308,6 +308,36 @@ class WLAN_AVAILABLE_NETWORK_LIST(Structure):
                 ("Network", WLAN_AVAILABLE_NETWORK * 1)]
 
 
+class WLAN_PROFILE_INFO(Structure):
+    """
+        The WLAN_PROFILE_INFO structure contains basic information about a
+        profile.
+
+        typedef struct _WLAN_PROFILE_INFO {
+            WCHAR strProfileName[256];
+            DWORD dwFlags;
+        } WLAN_PROFILE_INFO, *PWLAN_PROFILE_INFO;
+    """
+    _fields_ = [("ProfileName", c_wchar * 256),
+                ("Flags", DWORD)]
+
+
+class WLAN_PROFILE_INFO_LIST(Structure):
+    """
+        The WLAN_PROFILE_INFO_LIST structure contains a list of wireless
+        profile information.
+
+        typedef struct _WLAN_PROFILE_INFO_LIST {
+            DWORD             dwNumberOfItems;
+            DWORD             dwIndex;
+            WLAN_PROFILE_INFO ProfileInfo[1];
+        } WLAN_PROFILE_INFO_LIST, *PWLAN_PROFILE_INFO_LIST;
+    """
+    _fields_ = [("NumberOfItems", DWORD),
+                ("Index", DWORD),
+                ("ProfileInfo", WLAN_PROFILE_INFO * 1)]
+
+
 def WlanOpenHandle():
     """
         The WlanOpenHandle function opens a connection to the server.
@@ -499,5 +529,33 @@ def WlanGetAvailableNetworkList(hClientHandle, pInterfaceGuid):
                       None,
                       byref(wlan_available_network_list))
     if result != ERROR_SUCCESS:
-        raise Exception("WlanGetNetworkBssList failed.")
+        raise Exception("WlanGetAvailableNetworkList failed.")
     return wlan_available_network_list
+
+
+def WlanGetProfileList(hClientHandle, pInterfaceGuid):
+    """
+        The WlanGetProfileList function retrieves the list of profiles in
+        preference order.
+
+        DWORD WINAPI WlanGetProfileList(
+            _In_        HANDLE hClientHandle,
+            _In_        const GUID *pInterfaceGuid,
+            _Reserved_  PVOID pReserved,
+            _Out_       PWLAN_PROFILE_INFO_LIST *ppProfileList
+        );
+    """
+    func_ref = wlanapi.WlanGetProfileList
+    func_ref.argtypes = [HANDLE,
+                         POINTER(GUID),
+                         c_void_p,
+                         POINTER(POINTER(WLAN_PROFILE_INFO_LIST))]
+    func_ref.restype = DWORD
+    wlan_profile_info_list = pointer(WLAN_PROFILE_INFO_LIST())
+    result = func_ref(hClientHandle,
+                      byref(pInterfaceGuid),
+                      None,
+                      byref(wlan_profile_info_list))
+    if result != ERROR_SUCCESS:
+        raise Exception("WlanGetProfileList failed.")
+    return wlan_profile_info_list
