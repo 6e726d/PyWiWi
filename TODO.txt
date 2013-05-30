@@ -5,6 +5,9 @@ DONE
  + WlanFreeMemory
  + WlanGetNetworkBssList
  + WlanGetAvailableNetworkList
+ + WlanGetProfileList
+ + WlanGetProfile
+ + WlanScan
 
 PENDING
  + WLAN_NOTIFICATION_CALLBACK
@@ -15,9 +18,7 @@ PENDING
  + WlanExtractPsdIEDataList
  + WlanGetFilterList
  + WlanGetInterfaceCapability
- + WlanGetProfile
  + WlanGetProfileCustomUserData
- + WlanGetProfileList
  + WlanGetSecuritySettings
  + WlanHostedNetworkForceStart
  + WlanHostedNetworkForceStop
@@ -38,7 +39,6 @@ PENDING
  + WlanRegisterVirtualStationNotification
  + WlanRenameProfile
  + WlanSaveTemporaryProfile
- + WlanScan
  + WlanSetAutoConfigParameter
  + WlanSetFilterList
  + WlanSetInterface
