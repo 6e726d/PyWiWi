@@ -143,6 +143,21 @@ class WirelessNetworkBss(object):
         return result
 
 
+class WirelessProfile(object):
+    def __init__(self, wireless_profile, xml):
+        self.name = wireless_profile.ProfileName
+        self.flags = wireless_profile.Flags
+        self.xml = xml
+
+    def __str__(self):
+        result = ""
+        result += "Profile Name: %s\n" % self.name
+        result += "Flags: %d\n" % self.flags
+        result += "XML:\n"
+        result += "%s" % self.xml
+        return result
+
+
 def getWirelessInterfaces():
     """Returns a list of WirelessInterface objects based on the wireless
        interfaces available."""
@@ -202,5 +217,23 @@ def getWirelessAvailableNetworkList(wireless_interface):
 
 
 def getWirelessProfiles(wireless_interface):
-    """"""
-    pass
+    """Returns a list of WirelessProfile objects based on the wireless
+       profiles."""
+    profiles = []
+    handle = WlanOpenHandle()
+    profile_list = WlanGetProfileList(handle, wireless_interface.guid)
+    # Handle the WLAN_PROFILE_INFO_LIST pointer to get a list of
+    # WLAN_PROFILE_INFO structures.
+    data_type = profile_list.contents.ProfileInfo._type_
+    num = profile_list.contents.NumberOfItems
+    profile_info_pointer = addressof(profile_list.contents.ProfileInfo)
+    profiles_list = (data_type * num).from_address(profile_info_pointer)
+    for profile in profiles_list:
+        xml_data = WlanGetProfile(handle,
+                                  wireless_interface.guid,
+                                  profile.ProfileName)
+        profiles.append(WirelessProfile(profile, xml_data.value))
+    WlanFreeMemory(xml_data)
+    WlanFreeMemory(profiles_list)
+    WlanCloseHandle(handle)
+    return profiles

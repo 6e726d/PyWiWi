@@ -26,6 +26,8 @@ from comtypes import GUID
 from ctypes.wintypes import BOOL
 from ctypes.wintypes import DWORD
 from ctypes.wintypes import HANDLE
+from ctypes.wintypes import LPWSTR
+from ctypes.wintypes import LPCWSTR
 
 ERROR_SUCCESS = 0
 
@@ -122,6 +124,11 @@ WLAN_AVAILABLE_NETWORK_INCLUDE_ALL_MANUAL_HIDDEN_PROFILES = 0x00000002
 
 WLAN_AVAILABLE_NETWORK_INCLUDE_ALL_ADHOC_PROFILES = 0x00000001
 WLAN_AVAILABLE_NETWORK_INCLUDE_ALL_MANUAL_HIDDEN_PROFILES = 0x00000002
+
+# WLAN Profile Flags
+WLAN_PROFILE_GROUP_POLICY = 0x00000001
+WLAN_PROFILE_USER = 0x00000002
+WLAN_PROFILE_GET_PLAINTEXT_KEY = 0x00000004
 
 
 class WLAN_INTERFACE_INFO(Structure):
@@ -559,3 +566,42 @@ def WlanGetProfileList(hClientHandle, pInterfaceGuid):
     if result != ERROR_SUCCESS:
         raise Exception("WlanGetProfileList failed.")
     return wlan_profile_info_list
+
+
+def WlanGetProfile(hClientHandle, pInterfaceGuid, profileName):
+    """
+        The WlanGetProfile function retrieves all information about a specified
+        wireless profile.
+
+        DWORD WINAPI WlanGetProfile(
+            _In_         HANDLE hClientHandle,
+            _In_         const GUID *pInterfaceGuid,
+            _In_         LPCWSTR strProfileName,
+            _Reserved_   PVOID pReserved,
+            _Out_        LPWSTR *pstrProfileXml,
+            _Inout_opt_  DWORD *pdwFlags,
+            _Out_opt_    PDWORD pdwGrantedAccess
+        );
+    """
+    func_ref = wlanapi.WlanGetProfile
+    func_ref.argtypes = [HANDLE,
+                         POINTER(GUID),
+                         LPCWSTR,
+                         c_void_p,
+                         POINTER(LPWSTR),
+                         POINTER(DWORD),
+                         POINTER(DWORD)]
+    func_ref.restype = DWORD
+    pdw_granted_access = DWORD()
+    xml = LPWSTR()
+    flags = DWORD(WLAN_PROFILE_GET_PLAINTEXT_KEY)
+    result = func_ref(hClientHandle,
+                      byref(pInterfaceGuid),
+                      profileName,
+                      None,
+                      byref(xml),
+                      byref(flags),
+                      byref(pdw_granted_access))
+    if result != ERROR_SUCCESS:
+        raise Exception("WlanGetProfile failed.")
+    return xml

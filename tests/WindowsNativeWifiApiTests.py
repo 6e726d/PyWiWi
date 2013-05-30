@@ -19,6 +19,10 @@
 # Author: Andres Blanco (6e726d)     <6e726d@gmail.com>
 #
 
+import sys
+
+sys.path.append('../')
+
 import unittest
 
 from ctypes import addressof
@@ -110,6 +114,32 @@ class TestWindowsNativeWifiApi(unittest.TestCase):
         WlanFreeMemory(wlan_ifaces)
         WlanCloseHandle(handle)
 
+    def testWlanGetProfileSuccess(self):
+        handle = WlanOpenHandle()
+        wlan_ifaces = WlanEnumInterfaces(handle)
+        data_type = wlan_ifaces.contents.InterfaceInfo._type_
+        num = wlan_ifaces.contents.NumberOfItems
+        ifaces_pointer = addressof(wlan_ifaces.contents.InterfaceInfo)
+        wlan_iface_info_list = (data_type * num).from_address(ifaces_pointer)
+        msg = "We expect at least one wireless interface."
+        self.assertGreaterEqual(len(wlan_iface_info_list), 0, msg)
+        for wlan_iface_info in wlan_iface_info_list:
+            iface_guid = wlan_iface_info.InterfaceGuid
+            profile_list = WlanGetProfileList(handle, iface_guid)
+            data_type = profile_list.contents.ProfileInfo._type_
+            num = profile_list.contents.NumberOfItems
+            profile_info_pointer = addressof(profile_list.contents.ProfileInfo)
+            profiles_list = (data_type * num).from_address(profile_info_pointer)
+            msg = "We expect at least one profile info."
+            self.assertGreater(profile_list.contents.NumberOfItems, 0, msg)
+            for profile in profiles_list:
+                xml_data = WlanGetProfile(handle,
+                                          wlan_iface_info.InterfaceGuid,
+                                          profile.ProfileName)
+                msg = "We expect a string of at least 20 bytes."
+                self.assertGreater(len(xml_data.value), 20, msg)
+        WlanFreeMemory(wlan_ifaces)
+        WlanCloseHandle(handle)
 
 if __name__ == "__main__":
     unittest.main()
