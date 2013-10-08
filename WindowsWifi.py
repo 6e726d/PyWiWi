@@ -237,3 +237,117 @@ def getWirelessProfiles(wireless_interface):
     WlanFreeMemory(profiles_list)
     WlanCloseHandle(handle)
     return profiles
+
+
+def disconnect(wireless_interface):
+    """
+    """
+    handle = WlanOpenHandle()
+    WlanDisconnect(handle, wireless_interface.guid)
+    WlanCloseHandle(handle)
+
+def connect(wireless_interface, connection_params):
+    # FIXME
+    """
+        The WlanConnect function attempts to connect to a specific network.
+
+        DWORD WINAPI WlanConnect(
+          _In_        HANDLE hClientHandle,
+          _In_        const GUID *pInterfaceGuid,
+          _In_        const PWLAN_CONNECTION_PARAMETERS pConnectionParameters,
+          _Reserved_  PVOID pReserved
+        );
+    """
+    """
+        connection_params should be a dict with this structure:
+        { "connectionMode": "valid connection mode string",
+          "profile": ("profile name string" | "profile xml" | None)*,
+          "ssid": "ssid string",
+          "bssidList": [ "desired bssid string", ... ],
+          "bssType": valid bss type int,
+          "flags": valid flag dword in 0x00000000 format }
+        * Currently, only the name string is supported here.
+    """
+    """
+    The WlanConnect function attempts to connect to a specific network.
+
+    DWORD WINAPI WlanConnect(
+            _In_        HANDLE hClientHandle,
+            _In_        const GUID *pInterfaceGuid,
+            _In_        const PWLAN_CONNECTION_PARAMETERS pConnectionParameters,
+            _Reserved_  PVOID pReserved
+    );
+    """
+    handle = WlanOpenHandle()
+    cnxp = WLAN_CONNECTION_PARAMETERS()
+    cnxp.wlanConnectionMode = connection_params["connectionMode"]
+    # determine strProfile
+    if connection_params["connectionMode"] == 'wlan_connection_mode_profile':
+        # strProfile = name of profile to use for connection
+        cnxp.strProfile = connection_params["profile"]
+    elif connection_params["connectionMode"] == 'wlan_connection_mode_temporary_profile':
+        # strProfile = profile XML
+        cnxp.strProfile = connection_params["profile"]
+    else:
+        # strProfile = NULL
+        strProfile = None
+    # ssid
+    if connection_params["ssid"] is not None:
+        cnxp.pDot11Ssid = pointer(DOT11_SSID(
+                len(connection_params["ssid"]),
+                connection_params["ssid"]
+                ))
+    else:
+        ssid = None
+    # bssidList
+    if connection_params["bssidList"] is not None:
+        bssids = []
+        for bssidish in connection_params["bssidList"]:
+            bssidish = tuple(int(n, 16) for n in bssidish.split(":"))
+            bssids.append((DOT11_MAC_ADDRESS)(*bssidish))
+        bssidListEntries = len(bssids)
+        print "bssids len", bssidListEntries
+        bssids = (DOT11_MAC_ADDRESS * len(bssids))(*bssids)
+        bssidListHeader = NDIS_OBJECT_HEADER()
+        bssidListHeader.Type = chr(NDIS_OBJECT_TYPE_DEFAULT)
+        bssidListHeader.Revision = chr(DOT11_BSSID_LIST_REVISION_1)
+        bssidListHeader.Size = sizeof(DOT11_BSSID_LIST)
+        bssidList = DOT11_BSSID_LIST(
+                bssidListHeader,
+                bssidListEntries,
+                bssidListEntries,
+                bssids)
+        cnxp.pDesiredBssidList = pointer(bssidList)
+    else:
+        bssidList = None
+        #cnxp.pDesiredBssidList = None # required for XP
+    # look up bssType
+    # bssType must match type from profile if a profile is provided
+    if strProfile is None:
+        for key, val in DOT11_BSS_TYPE_DICT.items():
+            if val == connection_params["bssType"]:
+                bssType = key
+                break
+    cnxp.dot11BssType = bssType
+    # flags
+    cnxp.dwFlags = connection_params["flags"]
+    result = WlanConnect(handle,
+                wireless_interface.guid,
+                cnxp)
+    WlanCloseHandle(handle)
+
+def queryInterface(wireless_interface, opcode_item):
+    """
+    """
+    handle = WlanOpenHandle()
+    opcode_item = "".join(["wlan_intf_opcode_", opcode_item])
+    for key, val in WLAN_INTF_OPCODE_DICT.items():
+        if val == opcode_item:
+            opcode = WLAN_INTF_OPCODE(key)
+            break
+    result = WlanQueryInterface(handle,
+                                wireless_interface.guid,
+                                opcode)
+    WlanCloseHandle(handle)
+    return result.contents
+
