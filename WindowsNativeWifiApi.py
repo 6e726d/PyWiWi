@@ -105,6 +105,12 @@ DOT11_CIPHER_ALGORITHM_DICT = {0x00: "DOT11_CIPHER_ALGO_NONE",
                                0x80000000: "DOT11_CIPHER_ALGO_IHV_START",
                                0xffffffff: "DOT11_CIPHER_ALGO_IHV_END"}
 
+DOT11_RADIO_STATE = c_uint
+#TODO: values not verified
+DOT11_RADIO_STATE_DICT = {0: "dot11_radio_state_unknown",
+                          1: "dot11_radio_state_on",
+                          2: "dot11_radio_state_off"}
+
 WLAN_REASON_CODE = DWORD
 WLAN_SIGNAL_QUALITY = c_ulong
 
@@ -160,6 +166,27 @@ class WLAN_INTERFACE_INFO_LIST(Structure):
                 ("Index", DWORD),
                 ("InterfaceInfo", WLAN_INTERFACE_INFO * 1)]
 
+
+class WLAN_PHY_RADIO_STATE(Structure):
+    """
+    """
+    _fields_ = [("dwPhyIndex", DWORD),
+                ("dot11SoftwareRadioState", DOT11_RADIO_STATE),
+                ("dot11HardwareRadioState", DOT11_RADIO_STATE)]
+
+
+class WLAN_RADIO_STATE(Structure):
+    """
+        The WLAN_RADIO_STATE structure specifies the radio state on a list
+        of physical layer (PHY) types.
+
+        typedef struct _WLAN_RADIO_STATE {
+            DWORD                dwNumberOfPhys;
+            WLAN_PHY_RADIO_STATE PhyRadioState[64];
+        } WLAN_RADIO_STATE, *PWLAN_RADIO_STATE
+    """
+    _fields_ = [("dwNumberOfPhys", DWORD),
+                ("PhyRadioState", WLAN_PHY_RADIO_STATE * 64)]
 
 class DOT11_SSID(Structure):
     """
@@ -605,12 +632,14 @@ def WlanGetProfile(hClientHandle, pInterfaceGuid, profileName):
     return xml
 
 WLAN_CONNECTION_MODE = c_uint
-WLAN_CONNECTION_MODE_DICT = {0: "wlan_connection_mode_profile",
-                             1: "wlan_connection_mode_temporary_profile",
-                             2: "wlan_connection_mode_discovery_secure",
-                             3: "wlan_connection_mode_discovery_unsecure",
-                             4: "wlan_connection_mode_auto",
-                             5: "wlan_connection_mode_invalid"}
+WLAN_CONNECTION_MODE_KV = {0: "wlan_connection_mode_profile",
+                           1: "wlan_connection_mode_temporary_profile",
+                           2: "wlan_connection_mode_discovery_secure",
+                           3: "wlan_connection_mode_discovery_unsecure",
+                           4: "wlan_connection_mode_auto",
+                           5: "wlan_connection_mode_invalid"}
+WLAN_CONNECTION_MODE_VK = { v: k for k, v in
+        WLAN_CONNECTION_MODE_KV.iteritems() }
 
 class NDIS_OBJECT_HEADER(Structure):
     """
@@ -795,6 +824,28 @@ class WLAN_CONNECTION_ATTRIBUTES(Structure):
                 ("wlanAssociationAttributes", WLAN_ASSOCIATION_ATTRIBUTES),
                 ("wlanSecurityAttributes", WLAN_SECURITY_ATTRIBUTES)]
 
+WLAN_INTF_OPCODE_TYPE_DICT = {
+    "wlan_intf_opcode_autoconf_enabled": c_bool,
+    "wlan_intf_opcode_background_scan_enabled": c_bool,
+    "wlan_intf_opcode_radio_state": WLAN_RADIO_STATE,
+    "wlan_intf_opcode_bss_type": DOT11_BSS_TYPE,
+    "wlan_intf_opcode_interface_state": WLAN_INTERFACE_STATE,
+    "wlan_intf_opcode_current_connection": WLAN_CONNECTION_ATTRIBUTES,
+    "wlan_intf_opcode_channel_number": c_ulong,
+    #"wlan_intf_opcode_supported_infrastructure_auth_cipher_pairs": \
+            #WLAN_AUTH_CIPHER_PAIR_LIST,
+    #"wlan_intf_opcode_supported_adhoc_auth_cipher_pairs": \
+            #WLAN_AUTH_CIPHER_PAIR_LIST,
+    #"wlan_intf_opcode_supported_country_or_region_string_list": \
+            #WLAN_COUNTRY_OR_REGION_STRING_LIST,
+    "wlan_intf_opcode_media_streaming_mode": c_bool,
+    #"wlan_intf_opcode_statistics": WLAN_STATISTICS,
+    "wlan_intf_opcode_rssi": c_long,
+    "wlan_intf_opcode_current_operation_mode": c_ulong,
+    "wlan_intf_opcode_supported_safe_mode": c_bool,
+    "wlan_intf_opcode_certified_safe_mode": c_bool
+}
+
 def WlanQueryInterface(hClientHandle, pInterfaceGuid, OpCode):
     """
         DWORD WINAPI WlanQueryInterface(
@@ -808,16 +859,19 @@ def WlanQueryInterface(hClientHandle, pInterfaceGuid, OpCode):
         );
     """
     func_ref = wlanapi.WlanQueryInterface
+    #TODO: Next two lines sketchy due to incomplete implementation.
+    opcode_name = WLAN_INTF_OPCODE_DICT[OpCode.value]
+    return_type = WLAN_INTF_OPCODE_TYPE_DICT[opcode_name]
     func_ref.argtypes = [HANDLE,
                          POINTER(GUID),
                          WLAN_INTF_OPCODE,
                          c_void_p,
                          POINTER(DWORD),
-                         POINTER(POINTER(WLAN_CONNECTION_ATTRIBUTES)),
+                         POINTER(POINTER(return_type)),
                          POINTER(WLAN_OPCODE_VALUE_TYPE)]
     func_ref.restype = DWORD
     pdwDataSize = DWORD()
-    ppData = pointer(WLAN_CONNECTION_ATTRIBUTES())
+    ppData = pointer(return_type())
     pWlanOpcodeValueType = WLAN_OPCODE_VALUE_TYPE()
     result = func_ref(hClientHandle,
                       byref(pInterfaceGuid),
