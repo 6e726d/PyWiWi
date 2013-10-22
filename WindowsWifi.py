@@ -259,7 +259,6 @@ def disconnect(wireless_interface):
     WlanCloseHandle(handle)
 
 def connect(wireless_interface, connection_params):
-    # FIXME
     """
         The WlanConnect function attempts to connect to a specific network.
 
@@ -296,15 +295,11 @@ def connect(wireless_interface, connection_params):
     connection_mode_int = WLAN_CONNECTION_MODE_VK[connection_mode]
     cnxp.wlanConnectionMode = WLAN_CONNECTION_MODE(connection_mode_int)
     # determine strProfile
-    if connection_mode == 'wlan_connection_mode_profile':
-        # strProfile = name of profile to use for connection
-        cnxp.strProfile = connection_params["profile"]  #TODO: STARTHERE
-    elif connection_mode == 'wlan_connection_mode_temporary_profile':
-        # strProfile = profile XML
-        cnxp.strProfile = connection_params["profile"]
+    if connection_mode == ('wlan_connection_mode_profile' or           # name
+                           'wlan_connection_mode_temporary_profile'):  # xml
+        cnxp.strProfile = LPCWSTR(connection_params["profile"])
     else:
-        # strProfile = NULL
-        strProfile = None
+        cnxp.strProfile = None  # NULL
     # ssid
     if connection_params["ssid"] is not None:
         cnxp.pDot11Ssid = pointer(DOT11_SSID(
@@ -312,20 +307,19 @@ def connect(wireless_interface, connection_params):
                 connection_params["ssid"]
                 ))
     else:
-        ssid = None
+        ssid = None  # NULL
     # bssidList
     if connection_params["bssidList"] is not None:
         bssids = []
         for bssidish in connection_params["bssidList"]:
             bssidish = tuple(int(n, 16) for n in bssidish.split(":"))
             bssids.append((DOT11_MAC_ADDRESS)(*bssidish))
-        bssidListEntries = len(bssids)
-        print "bssids len", bssidListEntries
+        bssidListEntries = c_ulong(len(bssids))
         bssids = (DOT11_MAC_ADDRESS * len(bssids))(*bssids)
         bssidListHeader = NDIS_OBJECT_HEADER()
         bssidListHeader.Type = chr(NDIS_OBJECT_TYPE_DEFAULT)
-        bssidListHeader.Revision = chr(DOT11_BSSID_LIST_REVISION_1)
-        bssidListHeader.Size = sizeof(DOT11_BSSID_LIST)
+        bssidListHeader.Revision = chr(DOT11_BSSID_LIST_REVISION_1) # chr()
+        bssidListHeader.Size = c_ushort(sizeof(DOT11_BSSID_LIST))
         bssidList = DOT11_BSSID_LIST(
                 bssidListHeader,
                 bssidListEntries,
@@ -333,18 +327,18 @@ def connect(wireless_interface, connection_params):
                 bssids)
         cnxp.pDesiredBssidList = pointer(bssidList)
     else:
-        bssidList = None
-        #cnxp.pDesiredBssidList = None # required for XP
+        cnxp.bssidList = None
+        cnxp.pDesiredBssidList = None # required for XP
     # look up bssType
     # bssType must match type from profile if a profile is provided
-    if strProfile is None:
+    if cnxp.strProfile is not None:
         for key, val in DOT11_BSS_TYPE_DICT.items():
             if val == connection_params["bssType"]:
                 bssType = key
                 break
-    cnxp.dot11BssType = bssType
+    cnxp.dot11BssType = DOT11_BSS_TYPE(bssType)
     # flags
-    cnxp.dwFlags = connection_params["flags"]
+    cnxp.dwFlags = DWORD(connection_params["flags"])
     result = WlanConnect(handle,
                 wireless_interface.guid,
                 cnxp)
