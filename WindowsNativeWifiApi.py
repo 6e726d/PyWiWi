@@ -61,9 +61,11 @@ DOT11_MAC_ADDRESS = c_ubyte * 6
 # The DOT11_BSS_TYPE enumerated type defines a basic service set (BSS) network
 # type.
 DOT11_BSS_TYPE = c_uint
-DOT11_BSS_TYPE_DICT = {1: "dot11_BSS_type_infrastructure",
+DOT11_BSS_TYPE_DICT_KV = {1: "dot11_BSS_type_infrastructure",
                        2: "dot11_BSS_type_independent",
                        3: "dot11_BSS_type_any"}
+DOT11_BSS_TYPE_DICT_VK = { v: k for k, v in
+        DOT11_BSS_TYPE_DICT_KV.iteritems() }
 
 # The DOT11_PHY_TYPE enumeration defines an 802.11 PHY and media type.
 DOT11_PHY_TYPE = c_uint
@@ -668,6 +670,7 @@ class DOT11_BSSID_LIST(Structure):
           DOT11_MAC_ADDRESS  BSSIDs[1];
         } DOT11_BSSID_LIST, *PDOT11_BSSID_LIST;
     """
+    #NOTE: Would benefit from dynamic instantiation to mod # of BSSIDs
     _fields_ = [("Header", NDIS_OBJECT_HEADER),
                 ("uNumOfEntries", c_ulong),
                 ("uTotalNumOfEntries", c_ulong),
