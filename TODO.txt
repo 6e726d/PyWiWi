@@ -9,12 +9,15 @@ DONE
  + WlanGetProfile
  + WlanScan
 
+WIP
+ + WlanConnect
+ + WlanDisconnect
+ + WlanQueryInterface
+
 PENDING
  + WLAN_NOTIFICATION_CALLBACK
  + WlanAllocateMemory
- + WlanConnect
  + WlanDeleteProfile
- + WlanDisconnect
  + WlanExtractPsdIEDataList
  + WlanGetFilterList
  + WlanGetInterfaceCapability
@@ -33,7 +36,6 @@ PENDING
  + WlanHostedNetworkStopUsing
  + WlanIhvControl
  + WlanQueryAutoConfigParameter
- + WlanQueryInterface
  + WlanReasonCodeToString
  + WlanRegisterNotification
  + WlanRegisterVirtualStationNotification
