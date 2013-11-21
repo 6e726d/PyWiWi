@@ -34,7 +34,12 @@ ERROR_SUCCESS = 0
 CLIENT_VERSION_WINDOWS_XP_SP3 = 1
 CLIENT_VERSION_WINDOWS_VISTA_OR_LATER = 2
 
+# Windot11.h defines
 DOT11_SSID_MAX_LENGTH = 32
+DOT11_BSSID_LIST_REVISION_1 = 1
+
+# Ntddndis.h defines
+NDIS_OBJECT_TYPE_DEFAULT = 0x80
 
 wlanapi = windll.LoadLibrary('wlanapi.dll')
 
@@ -49,13 +54,6 @@ WLAN_INTERFACE_STATE_DICT = {0: "wlan_interface_state_not_ready",
                              6: "wlan_interface_state_discovering",
                              7: "wlan_interface_state_authenticating"}
 
-# The DOT11_BSS_TYPE enumerated type defines a basic service set (BSS) network
-# type.
-DOT11_BSS_TYPE = c_uint
-DOT11_BSS_TYPE_DICT = {1: "dot11_BSS_type_infrastructure",
-                       2: "dot11_BSS_type_independent",
-                       3: "dot11_BSS_type_any"}
-
 # The DOT11_MAC_ADDRESS types are used to define an IEEE media access control
 # (MAC) address.
 DOT11_MAC_ADDRESS = c_ubyte * 6
@@ -63,9 +61,11 @@ DOT11_MAC_ADDRESS = c_ubyte * 6
 # The DOT11_BSS_TYPE enumerated type defines a basic service set (BSS) network
 # type.
 DOT11_BSS_TYPE = c_uint
-DOT11_BSS_TYPE_DICT = {1: "dot11_BSS_type_infrastructure",
+DOT11_BSS_TYPE_DICT_KV = {1: "dot11_BSS_type_infrastructure",
                        2: "dot11_BSS_type_independent",
                        3: "dot11_BSS_type_any"}
+DOT11_BSS_TYPE_DICT_VK = { v: k for k, v in
+        DOT11_BSS_TYPE_DICT_KV.iteritems() }
 
 # The DOT11_PHY_TYPE enumeration defines an 802.11 PHY and media type.
 DOT11_PHY_TYPE = c_uint
@@ -106,6 +106,12 @@ DOT11_CIPHER_ALGORITHM_DICT = {0x00: "DOT11_CIPHER_ALGO_NONE",
                                0x101: "DOT11_CIPHER_ALGO_WEP",
                                0x80000000: "DOT11_CIPHER_ALGO_IHV_START",
                                0xffffffff: "DOT11_CIPHER_ALGO_IHV_END"}
+
+DOT11_RADIO_STATE = c_uint
+#TODO: values not verified
+DOT11_RADIO_STATE_DICT = {0: "dot11_radio_state_unknown",
+                          1: "dot11_radio_state_on",
+                          2: "dot11_radio_state_off"}
 
 WLAN_REASON_CODE = DWORD
 WLAN_SIGNAL_QUALITY = c_ulong
@@ -162,6 +168,27 @@ class WLAN_INTERFACE_INFO_LIST(Structure):
                 ("Index", DWORD),
                 ("InterfaceInfo", WLAN_INTERFACE_INFO * 1)]
 
+
+class WLAN_PHY_RADIO_STATE(Structure):
+    """
+    """
+    _fields_ = [("dwPhyIndex", DWORD),
+                ("dot11SoftwareRadioState", DOT11_RADIO_STATE),
+                ("dot11HardwareRadioState", DOT11_RADIO_STATE)]
+
+
+class WLAN_RADIO_STATE(Structure):
+    """
+        The WLAN_RADIO_STATE structure specifies the radio state on a list
+        of physical layer (PHY) types.
+
+        typedef struct _WLAN_RADIO_STATE {
+            DWORD                dwNumberOfPhys;
+            WLAN_PHY_RADIO_STATE PhyRadioState[64];
+        } WLAN_RADIO_STATE, *PWLAN_RADIO_STATE
+    """
+    _fields_ = [("dwNumberOfPhys", DWORD),
+                ("PhyRadioState", WLAN_PHY_RADIO_STATE * 64)]
 
 class DOT11_SSID(Structure):
     """
@@ -605,3 +632,258 @@ def WlanGetProfile(hClientHandle, pInterfaceGuid, profileName):
     if result != ERROR_SUCCESS:
         raise Exception("WlanGetProfile failed.")
     return xml
+
+WLAN_CONNECTION_MODE = c_uint
+WLAN_CONNECTION_MODE_KV = {0: "wlan_connection_mode_profile",
+                           1: "wlan_connection_mode_temporary_profile",
+                           2: "wlan_connection_mode_discovery_secure",
+                           3: "wlan_connection_mode_discovery_unsecure",
+                           4: "wlan_connection_mode_auto",
+                           5: "wlan_connection_mode_invalid"}
+WLAN_CONNECTION_MODE_VK = { v: k for k, v in
+        WLAN_CONNECTION_MODE_KV.iteritems() }
+
+class NDIS_OBJECT_HEADER(Structure):
+    """
+        The NDIS_OBJECT_HEADER structure packages the object type, version, and
+        size information that is required in many NDIS 6.0 structures.
+
+        typedef struct _NDIS_OBJECT_HEADER {
+          UCHAR  Type;
+          UCHAR  Revision;
+          USHORT Size;
+        } NDIS_OBJECT_HEADER, *PNDIS_OBJECT_HEADER;
+    """
+    _fields_ = [("Type", c_char),
+                ("Revision", c_char),
+                ("Size", c_ushort)]
+
+class DOT11_BSSID_LIST(Structure):
+    """
+        The DOT11_BSSID_LIST structure contains a list of basic service set
+        (BSS) identifiers.
+
+        typedef struct _DOT11_BSSID_LIST {
+          NDIS_OBJECT_HEADER Header;
+          ULONG              uNumOfEntries;
+          ULONG              uTotalNumOfEntries;
+          DOT11_MAC_ADDRESS  BSSIDs[1];
+        } DOT11_BSSID_LIST, *PDOT11_BSSID_LIST;
+    """
+    #NOTE: Would benefit from dynamic instantiation to mod # of BSSIDs
+    _fields_ = [("Header", NDIS_OBJECT_HEADER),
+                ("uNumOfEntries", c_ulong),
+                ("uTotalNumOfEntries", c_ulong),
+                ("BSSIDs", DOT11_MAC_ADDRESS * 1)]
+
+class WLAN_CONNECTION_PARAMETERS(Structure):
+    """
+        The WLAN_CONNECTION_PARAMETERS structure specifies the parameters used
+        when using the WlanConnect function.
+
+        typedef struct _WLAN_CONNECTION_PARAMETERS {
+          WLAN_CONNECTION_MODE wlanConnectionMode;
+          LPCWSTR              strProfile;
+          PDOT11_SSID          pDot11Ssid;
+          PDOT11_BSSID_LIST    pDesiredBssidList;
+          DOT11_BSS_TYPE       dot11BssType;
+          DWORD                dwFlags;
+        } WLAN_CONNECTION_PARAMETERS, *PWLAN_CONNECTION_PARAMETERS;
+    """
+    """
+        Re strProfile:
+        If wlanConnectionMode is set to wlan_connection_mode_profile, then
+        strProfile specifies the name of the profile used for the connection.
+        If wlanConnectionMode is set to wlan_connection_mode_temporary_profile,
+        then strProfile specifies the XML representation of the profile used for
+        the connection. If wlanConnectionMode is set to
+        wlan_connection_mode_discovery_secure or wlan_connection_mode_discovery_unsecure,
+        then strProfile should be set to NULL.
+
+        NOTE: For now, only profile names will be accepted, per strProfileName
+        elsewhere.
+    """
+    _fields_ = [("wlanConnectionMode", WLAN_CONNECTION_MODE),
+                ("strProfile", LPCWSTR),
+                ("pDot11_ssid", POINTER(DOT11_SSID)),
+                ("pDesiredBssidList", POINTER(DOT11_BSSID_LIST)),
+                ("dot11BssType", DOT11_BSS_TYPE),
+                ("dwFlags", DWORD)]
+
+def WlanConnect(hClientHandle, pInterfaceGuid, pConnectionParameters):
+    """
+    The WlanConnect function attempts to connect to a specific network.
+
+    DWORD WINAPI WlanConnect(
+            _In_        HANDLE hClientHandle,
+            _In_        const GUID *pInterfaceGuid,
+            _In_        const PWLAN_CONNECTION_PARAMETERS pConnectionParameters,
+            _Reserved_  PVOID pReserved
+    );
+    """
+    func_ref = wlanapi.WlanConnect
+    func_ref.argtypes = [HANDLE,
+                         POINTER(GUID),
+                         POINTER(WLAN_CONNECTION_PARAMETERS),
+                         c_void_p]
+    func_ref.restype = DWORD
+    result = func_ref(hClientHandle,
+                      pointer(pInterfaceGuid),
+                      pointer(pConnectionParameters),
+                      None)
+    if result != ERROR_SUCCESS:
+        raise Exception("".join(["WlanConnect failed with error ", str(result)]))
+    return result
+
+def WlanDisconnect(hClientHandle, pInterfaceGuid):
+    """
+    """
+    func_ref = wlanapi.WlanDisconnect
+    func_ref.argtypes = [HANDLE,
+                         POINTER(GUID),
+                         c_void_p]
+    func_ref.restype = DWORD
+    result = func_ref(hClientHandle,
+                      byref(pInterfaceGuid),
+                      None)
+    if result != ERROR_SUCCESS:
+        raise Exception("WlanDisconnect failed.")
+    return result
+
+WLAN_INTF_OPCODE = c_uint
+WLAN_INTF_OPCODE_DICT = {
+    0x000000000: "wlan_intf_opcode_autoconf_start",
+    1: "wlan_intf_opcode_autoconf_enabled",
+    2: "wlan_intf_opcode_background_scan_enabled",
+    3: "wlan_intf_opcode_media_streaming_mode",
+    4: "wlan_intf_opcode_radio_state",
+    5: "wlan_intf_opcode_bss_type",
+    6: "wlan_intf_opcode_interface_state",
+    7: "wlan_intf_opcode_current_connection",
+    8: "wlan_intf_opcode_channel_number",
+    9: "wlan_intf_opcode_supported_infrastructure_auth_cipher_pairs",
+    10: "wlan_intf_opcode_supported_adhoc_auth_cipher_pairs",
+    11: "wlan_intf_opcode_supported_country_or_region_string_list",
+    12: "wlan_intf_opcode_current_operation_mode",
+    13: "wlan_intf_opcode_supported_safe_mode",
+    14: "wlan_intf_opcode_certified_safe_mode",
+    15: "wlan_intf_opcode_hosted_network_capable",
+    16: "wlan_intf_opcode_management_frame_protection_capable",
+    0x0fffffff: "wlan_intf_opcode_autoconf_end",
+    0x10000100: "wlan_intf_opcode_msm_start",
+    17: "wlan_intf_opcode_statistics",
+    18: "wlan_intf_opcode_rssi",
+    0x1fffffff: "wlan_intf_opcode_msm_end",
+    0x20010000: "wlan_intf_opcode_security_start",
+    0x2fffffff: "wlan_intf_opcode_security_end",
+    0x30000000: "wlan_intf_opcode_ihv_start",
+    0x3fffffff: "wlan_intf_opcode_ihv_end"
+}
+
+WLAN_OPCODE_VALUE_TYPE = c_uint
+WLAN_OPCODE_VALUE_TYPE_DICT = {
+    0: "wlan_opcode_value_type_query_only",
+    1: "wlan_opcode_value_type_set_by_group_policy",
+    2: "wlan_opcode_value_type_set_by_user",
+    3: "wlan_opcode_value_type_invalid"
+}
+
+class WLAN_ASSOCIATION_ATTRIBUTES(Structure):
+    """
+    """
+    _fields_ = [("dot11Ssid", DOT11_SSID),
+                ("dot11BssType", DOT11_BSS_TYPE),
+                ("dot11Bssid", DOT11_MAC_ADDRESS),
+                ("dot11PhyType", DOT11_PHY_TYPE),
+                ("uDot11PhyIndex", c_ulong),
+                ("wlanSignalQuality", WLAN_SIGNAL_QUALITY),
+                ("ulRxRate", c_ulong),
+                ("ulTxRate", c_ulong)]
+
+class WLAN_SECURITY_ATTRIBUTES(Structure):
+    """
+    """
+    _fields_ = [("bSecurityEnabled", BOOL),
+                ("bOneXEnabled", BOOL),
+                ("dot11AuthAlgorithm", DOT11_AUTH_ALGORITHM_TYPE),
+                ("dot11CipherAlgorithm", DOT11_CIPHER_ALGORITHM_TYPE)]
+
+class WLAN_CONNECTION_ATTRIBUTES(Structure):
+    """
+        The WlanQueryInterface function queries various parameters of a
+        specified interface.
+
+        typedef struct _WLAN_CONNECTION_ATTRIBUTES {
+          WLAN_INTERFACE_STATE        isState;
+          WLAN_CONNECTION_MODE        wlanConnectionMode;
+          WCHAR                       strProfileName[256];
+          WLAN_ASSOCIATION_ATTRIBUTES wlanAssociationAttributes;
+          WLAN_SECURITY_ATTRIBUTES    wlanSecurityAttributes;
+        } WLAN_CONNECTION_ATTRIBUTES, *PWLAN_CONNECTION_ATTRIBUTES;
+    """
+    _fields_ = [("isState", WLAN_INTERFACE_STATE),
+                ("wlanConnectionMode", WLAN_CONNECTION_MODE),
+                ("strProfileName", c_wchar * 256),
+                ("wlanAssociationAttributes", WLAN_ASSOCIATION_ATTRIBUTES),
+                ("wlanSecurityAttributes", WLAN_SECURITY_ATTRIBUTES)]
+
+WLAN_INTF_OPCODE_TYPE_DICT = {
+    "wlan_intf_opcode_autoconf_enabled": c_bool,
+    "wlan_intf_opcode_background_scan_enabled": c_bool,
+    "wlan_intf_opcode_radio_state": WLAN_RADIO_STATE,
+    "wlan_intf_opcode_bss_type": DOT11_BSS_TYPE,
+    "wlan_intf_opcode_interface_state": WLAN_INTERFACE_STATE,
+    "wlan_intf_opcode_current_connection": WLAN_CONNECTION_ATTRIBUTES,
+    "wlan_intf_opcode_channel_number": c_ulong,
+    #"wlan_intf_opcode_supported_infrastructure_auth_cipher_pairs": \
+            #WLAN_AUTH_CIPHER_PAIR_LIST,
+    #"wlan_intf_opcode_supported_adhoc_auth_cipher_pairs": \
+            #WLAN_AUTH_CIPHER_PAIR_LIST,
+    #"wlan_intf_opcode_supported_country_or_region_string_list": \
+            #WLAN_COUNTRY_OR_REGION_STRING_LIST,
+    "wlan_intf_opcode_media_streaming_mode": c_bool,
+    #"wlan_intf_opcode_statistics": WLAN_STATISTICS,
+    "wlan_intf_opcode_rssi": c_long,
+    "wlan_intf_opcode_current_operation_mode": c_ulong,
+    "wlan_intf_opcode_supported_safe_mode": c_bool,
+    "wlan_intf_opcode_certified_safe_mode": c_bool
+}
+
+def WlanQueryInterface(hClientHandle, pInterfaceGuid, OpCode):
+    """
+        DWORD WINAPI WlanQueryInterface(
+          _In_        HANDLE hClientHandle,
+          _In_        const GUID *pInterfaceGuid,
+          _In_        WLAN_INTF_OPCODE OpCode,
+          _Reserved_  PVOID pReserved,
+          _Out_       PDWORD pdwDataSize,
+          _Out_       PVOID *ppData,
+          _Out_opt_   PWLAN_OPCODE_VALUE_TYPE pWlanOpcodeValueType
+        );
+    """
+    func_ref = wlanapi.WlanQueryInterface
+    #TODO: Next two lines sketchy due to incomplete implementation.
+    opcode_name = WLAN_INTF_OPCODE_DICT[OpCode.value]
+    return_type = WLAN_INTF_OPCODE_TYPE_DICT[opcode_name]
+    func_ref.argtypes = [HANDLE,
+                         POINTER(GUID),
+                         WLAN_INTF_OPCODE,
+                         c_void_p,
+                         POINTER(DWORD),
+                         POINTER(POINTER(return_type)),
+                         POINTER(WLAN_OPCODE_VALUE_TYPE)]
+    func_ref.restype = DWORD
+    pdwDataSize = DWORD()
+    ppData = pointer(return_type())
+    pWlanOpcodeValueType = WLAN_OPCODE_VALUE_TYPE()
+    result = func_ref(hClientHandle,
+                      byref(pInterfaceGuid),
+                      OpCode,
+                      None,
+                      pdwDataSize,
+                      ppData,
+                      pWlanOpcodeValueType)
+    if result != ERROR_SUCCESS:
+        raise Exception("WlanQueryInterface failed.")
+    return ppData
+
