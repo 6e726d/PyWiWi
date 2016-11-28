@@ -19,17 +19,18 @@
 # Author: Andres Blanco (6e726d) <6e726d@gmail.com>
 #
 
+from __future__ import print_function
 from WindowsWifi import getWirelessInterfaces
 from WindowsWifi import getWirelessProfiles
 
 if __name__ == "__main__":
     ifaces = getWirelessInterfaces()
     for iface in ifaces:
-        print iface
+        print(iface)
         guid = iface.guid
         profiles = getWirelessProfiles(iface)
-        print ""
+        print("")
         for profile in profiles:
-            print profile
-            print "-" * 20
-        print ""
+            print(profile)
+            print("-" * 20)
+        print("")
