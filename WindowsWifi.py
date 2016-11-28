@@ -241,14 +241,18 @@ def getWirelessProfiles(wireless_interface):
     num = profile_list.contents.NumberOfItems
     profile_info_pointer = addressof(profile_list.contents.ProfileInfo)
     xml_data = None  # safety: there may be no profiles
-    for profile in (data_type * num).from_address(profile_info_pointer):
-        xml_data = WlanGetProfile(handle,
-                                  wireless_interface.guid,
-                                  profile.ProfileName)
-        profiles.append(WirelessProfile(profile, xml_data.value))
-    WlanFreeMemory(xml_data)
-    WlanFreeMemory(profile_list)
-    WlanCloseHandle(handle)
+    try:
+        for profile in (data_type * num).from_address(profile_info_pointer):
+            try:
+                xml_data = WlanGetProfile(handle,
+                                          wireless_interface.guid,
+                                          profile.ProfileName)
+                profiles.append(WirelessProfile(profile, xml_data.value))
+            finally:
+                WlanFreeMemory(xml_data)
+    finally:
+        WlanFreeMemory(profile_list)
+        WlanCloseHandle(handle)
     return profiles
 
 
