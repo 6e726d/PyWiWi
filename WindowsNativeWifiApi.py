@@ -451,7 +451,7 @@ def WlanEnumInterfaces(hClientHandle):
     return wlan_ifaces
 
 
-def WlanScan(hClientHandle, pInterfaceGuid, ssid=""):
+def WlanScan(hClientHandle, pInterfaceGuid, ssid=b""):
     """
         The WlanScan function requests a scan for available networks on the
         indicated interface.

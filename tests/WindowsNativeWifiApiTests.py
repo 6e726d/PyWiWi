@@ -59,7 +59,7 @@ class TestWindowsNativeWifiApi(unittest.TestCase):
         msg = "We expect at least one wireless interface."
         self.assertGreaterEqual(len(wlan_iface_info_list), 0, msg)
         for wlan_iface_info in wlan_iface_info_list:
-            WlanScan(handle, wlan_iface_info.InterfaceGuid, "test")
+            WlanScan(handle, wlan_iface_info.InterfaceGuid, b"test")
         WlanFreeMemory(wlan_ifaces)
         WlanCloseHandle(handle)
 
