@@ -9,3 +9,10 @@ try:
     iteritems = dict.iteritems
 except AttributeError:
     iteritems = dict.items
+
+if PY2:
+    def indexbytes(buf, index):
+        return ord(buf[index])
+else:
+    def indexbytes(buf, index):
+        return buf[index]

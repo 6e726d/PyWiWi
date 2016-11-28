@@ -22,6 +22,7 @@
 from ctypes import *
 from comtypes import GUID
 from WindowsNativeWifiApi import *
+from compat import indexbytes
 
 NULL = None
 
@@ -102,7 +103,7 @@ class WirelessNetworkBss(object):
         self.__process_information_elements2()
 
     def __process_information_elements(self, bss_entry):
-        self.raw_information_elements = ""
+        self.raw_information_elements = b""
         bss_entry_pointer = addressof(bss_entry)
         ie_offset = bss_entry.IeOffset
         data_type = (c_char * bss_entry.IeSize)
@@ -115,10 +116,10 @@ class WirelessNetworkBss(object):
         self.information_elements = []
         aux = self.raw_information_elements
         index = 0
-        while(index < len(aux) - MINIMAL_IE_SIZE):
-            eid = ord(aux[index])
+        while index < len(aux) - MINIMAL_IE_SIZE:
+            eid = indexbytes(aux, index)
             index += 1
-            length = ord(aux[index])
+            length = indexbytes(aux, index)
             index += 1
             body = aux[index:index + length]
             index += length
