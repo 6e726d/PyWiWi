@@ -205,13 +205,15 @@ def getWirelessAvailableNetworkList(wireless_interface):
     network_list = WlanGetAvailableNetworkList(handle, wireless_interface.guid)
     # Handle the WLAN_AVAILABLE_NETWORK_LIST pointer to get a list of
     # WLAN_AVAILABLE_NETWORK structures.
-    data_type = network_list.contents.Network._type_
-    num = network_list.contents.NumberOfItems
-    network_pointer = addressof(network_list.contents.Network)
-    networks = [ WirelessNetwork(network)
-                 for network in (data_type * num).from_address(network_pointer) ]
-    WlanFreeMemory(network_list)
-    WlanCloseHandle(handle)
+    try:
+        data_type = network_list.contents.Network._type_
+        num = network_list.contents.NumberOfItems
+        network_pointer = addressof(network_list.contents.Network)
+        networks = [ WirelessNetwork(network)
+                     for network in (data_type * num).from_address(network_pointer) ]
+    finally:
+        WlanFreeMemory(network_list)
+        WlanCloseHandle(handle)
     return networks
 
 
