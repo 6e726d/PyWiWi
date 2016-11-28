@@ -240,15 +240,14 @@ def getWirelessProfiles(wireless_interface):
     data_type = profile_list.contents.ProfileInfo._type_
     num = profile_list.contents.NumberOfItems
     profile_info_pointer = addressof(profile_list.contents.ProfileInfo)
-    profiles_list = (data_type * num).from_address(profile_info_pointer)
     xml_data = None  # safety: there may be no profiles
-    for profile in profiles_list:
+    for profile in (data_type * num).from_address(profile_info_pointer):
         xml_data = WlanGetProfile(handle,
                                   wireless_interface.guid,
                                   profile.ProfileName)
         profiles.append(WirelessProfile(profile, xml_data.value))
     WlanFreeMemory(xml_data)
-    WlanFreeMemory(profiles_list)
+    WlanFreeMemory(profile_list)
     WlanCloseHandle(handle)
     return profiles
 
