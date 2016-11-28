@@ -19,6 +19,8 @@
 # Author: Andres Blanco (6e726d)     <6e726d@gmail.com>
 #
 
+from compat import iteritems
+
 from ctypes import *
 
 from comtypes import GUID
@@ -62,10 +64,10 @@ DOT11_MAC_ADDRESS = c_ubyte * 6
 # type.
 DOT11_BSS_TYPE = c_uint
 DOT11_BSS_TYPE_DICT_KV = {1: "dot11_BSS_type_infrastructure",
-                       2: "dot11_BSS_type_independent",
-                       3: "dot11_BSS_type_any"}
+                          2: "dot11_BSS_type_independent",
+                          3: "dot11_BSS_type_any"}
 DOT11_BSS_TYPE_DICT_VK = { v: k for k, v in
-        DOT11_BSS_TYPE_DICT_KV.iteritems() }
+        iteritems(DOT11_BSS_TYPE_DICT_KV) }
 
 # The DOT11_PHY_TYPE enumeration defines an 802.11 PHY and media type.
 DOT11_PHY_TYPE = c_uint
@@ -449,7 +451,7 @@ def WlanEnumInterfaces(hClientHandle):
     return wlan_ifaces
 
 
-def WlanScan(hClientHandle, pInterfaceGuid, ssid=""):
+def WlanScan(hClientHandle, pInterfaceGuid, ssid=b""):
     """
         The WlanScan function requests a scan for available networks on the
         indicated interface.
@@ -641,7 +643,7 @@ WLAN_CONNECTION_MODE_KV = {0: "wlan_connection_mode_profile",
                            4: "wlan_connection_mode_auto",
                            5: "wlan_connection_mode_invalid"}
 WLAN_CONNECTION_MODE_VK = { v: k for k, v in
-        WLAN_CONNECTION_MODE_KV.iteritems() }
+        iteritems(WLAN_CONNECTION_MODE_KV) }
 
 class NDIS_OBJECT_HEADER(Structure):
     """

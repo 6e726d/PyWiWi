@@ -22,6 +22,7 @@
 from ctypes import *
 from comtypes import GUID
 from WindowsNativeWifiApi import *
+from compat import indexbytes
 
 NULL = None
 
@@ -102,7 +103,7 @@ class WirelessNetworkBss(object):
         self.__process_information_elements2()
 
     def __process_information_elements(self, bss_entry):
-        self.raw_information_elements = ""
+        self.raw_information_elements = b""
         bss_entry_pointer = addressof(bss_entry)
         ie_offset = bss_entry.IeOffset
         data_type = (c_char * bss_entry.IeSize)
@@ -115,10 +116,10 @@ class WirelessNetworkBss(object):
         self.information_elements = []
         aux = self.raw_information_elements
         index = 0
-        while(index < len(aux) - MINIMAL_IE_SIZE):
-            eid = ord(aux[index])
+        while index < len(aux) - MINIMAL_IE_SIZE:
+            eid = indexbytes(aux, index)
             index += 1
-            length = ord(aux[index])
+            length = indexbytes(aux, index)
             index += 1
             body = aux[index:index + length]
             index += length
@@ -165,17 +166,19 @@ def getWirelessInterfaces():
     interfaces_list = []
     handle = WlanOpenHandle()
     wlan_ifaces = WlanEnumInterfaces(handle)
-    # Handle the WLAN_INTERFACE_INFO_LIST pointer to get a list of
-    # WLAN_INTERFACE_INFO structures.
-    data_type = wlan_ifaces.contents.InterfaceInfo._type_
-    num = wlan_ifaces.contents.NumberOfItems
-    ifaces_pointer = addressof(wlan_ifaces.contents.InterfaceInfo)
-    wlan_interface_info_list = (data_type * num).from_address(ifaces_pointer)
-    for wlan_interface_info in wlan_interface_info_list:
-        wlan_iface = WirelessInterface(wlan_interface_info)
-        interfaces_list.append(wlan_iface)
-    WlanFreeMemory(wlan_ifaces)
-    WlanCloseHandle(handle)
+    try:
+        # Handle the WLAN_INTERFACE_INFO_LIST pointer to get a list of
+        # WLAN_INTERFACE_INFO structures.
+        data_type = wlan_ifaces.contents.InterfaceInfo._type_
+        num = wlan_ifaces.contents.NumberOfItems
+        ifaces_pointer = addressof(wlan_ifaces.contents.InterfaceInfo)
+        wlan_interface_info_list = (data_type * num).from_address(ifaces_pointer)
+        for wlan_interface_info in wlan_interface_info_list:
+            wlan_iface = WirelessInterface(wlan_interface_info)
+            interfaces_list.append(wlan_iface)
+    finally:
+        WlanFreeMemory(wlan_ifaces)
+        WlanCloseHandle(handle)
     return interfaces_list
 
 
@@ -185,35 +188,37 @@ def getWirelessNetworkBssList(wireless_interface):
     networks = []
     handle = WlanOpenHandle()
     bss_list = WlanGetNetworkBssList(handle, wireless_interface.guid)
-    # Handle the WLAN_BSS_LIST pointer to get a list of WLAN_BSS_ENTRY
-    # structures.
-    data_type = bss_list.contents.wlanBssEntries._type_
-    num = bss_list.contents.NumberOfItems
-    bsss_pointer = addressof(bss_list.contents.wlanBssEntries)
-    bss_entries_list = (data_type * num).from_address(bsss_pointer)
-    for bss_entry in bss_entries_list:
-        networks.append(WirelessNetworkBss(bss_entry))
-    WlanFreeMemory(bss_list)
-    WlanCloseHandle(handle)
+    try:
+        # Handle the WLAN_BSS_LIST pointer to get a list of WLAN_BSS_ENTRY
+        # structures.
+        data_type = bss_list.contents.wlanBssEntries._type_
+        num = bss_list.contents.NumberOfItems
+        bsss_pointer = addressof(bss_list.contents.wlanBssEntries)
+        bss_entries_list = (data_type * num).from_address(bsss_pointer)
+        for bss_entry in bss_entries_list:
+            networks.append(WirelessNetworkBss(bss_entry))
+    finally:
+        WlanFreeMemory(bss_list)
+        WlanCloseHandle(handle)
     return networks
 
 
 def getWirelessAvailableNetworkList(wireless_interface):
     """Returns a list of WirelessNetwork objects based on the wireless
        networks availables."""
-    networks = []
     handle = WlanOpenHandle()
     network_list = WlanGetAvailableNetworkList(handle, wireless_interface.guid)
     # Handle the WLAN_AVAILABLE_NETWORK_LIST pointer to get a list of
     # WLAN_AVAILABLE_NETWORK structures.
-    data_type = network_list.contents.Network._type_
-    num = network_list.contents.NumberOfItems
-    network_pointer = addressof(network_list.contents.Network)
-    networks_list = (data_type * num).from_address(network_pointer)
-    for network in networks_list:
-        networks.append(WirelessNetwork(network))
-    WlanFreeMemory(networks_list)
-    WlanCloseHandle(handle)
+    try:
+        data_type = network_list.contents.Network._type_
+        num = network_list.contents.NumberOfItems
+        network_pointer = addressof(network_list.contents.Network)
+        networks = [ WirelessNetwork(network)
+                     for network in (data_type * num).from_address(network_pointer) ]
+    finally:
+        WlanFreeMemory(network_list)
+        WlanCloseHandle(handle)
     return networks
 
 
@@ -222,9 +227,11 @@ def getWirelessProfileXML(wireless_interface, profile_name):
     xml_data = WlanGetProfile(handle,
                               wireless_interface.guid,
                               LPCWSTR(profile_name))
-    xml = xml_data.value
-    WlanFreeMemory(xml_data)
-    WlanCloseHandle(handle)
+    try:
+        xml = xml_data.value
+    finally:
+        WlanFreeMemory(xml_data)
+        WlanCloseHandle(handle)
     return xml
     
 
@@ -239,16 +246,18 @@ def getWirelessProfiles(wireless_interface):
     data_type = profile_list.contents.ProfileInfo._type_
     num = profile_list.contents.NumberOfItems
     profile_info_pointer = addressof(profile_list.contents.ProfileInfo)
-    profiles_list = (data_type * num).from_address(profile_info_pointer)
-    xml_data = None  # safety: there may be no profiles
-    for profile in profiles_list:
-        xml_data = WlanGetProfile(handle,
-                                  wireless_interface.guid,
-                                  profile.ProfileName)
-        profiles.append(WirelessProfile(profile, xml_data.value))
-    WlanFreeMemory(xml_data)
-    WlanFreeMemory(profiles_list)
-    WlanCloseHandle(handle)
+    try:
+        for profile in (data_type * num).from_address(profile_info_pointer):
+            xml_data = WlanGetProfile(handle,
+                                      wireless_interface.guid,
+                                      profile.ProfileName)
+            try:
+                profiles.append(WirelessProfile(profile, xml_data.value))
+            finally:
+                WlanFreeMemory(xml_data)
+    finally:
+        WlanFreeMemory(profile_list)
+        WlanCloseHandle(handle)
     return profiles
 
 
@@ -258,6 +267,7 @@ def disconnect(wireless_interface):
     handle = WlanOpenHandle()
     WlanDisconnect(handle, wireless_interface.guid)
     WlanCloseHandle(handle)
+
 
 def connect(wireless_interface, connection_params):
     """

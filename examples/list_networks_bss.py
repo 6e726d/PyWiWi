@@ -19,17 +19,18 @@
 # Author: Andres Blanco (6e726d) <6e726d@gmail.com>
 #
 
+from __future__ import print_function
 from WindowsWifi import getWirelessInterfaces
 from WindowsWifi import getWirelessNetworkBssList
 
 if __name__ == "__main__":
     ifaces = getWirelessInterfaces()
     for iface in ifaces:
-        print iface
+        print(iface)
         guid = iface.guid
         bsss = getWirelessNetworkBssList(iface)
-        print ""
+        print("")
         for bss in bsss:
-            print bss
-            print "-" * 20
-        print ""
+            print(bss)
+            print("-" * 20)
+        print("")
